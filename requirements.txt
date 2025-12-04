@@ -1,5 +1,5 @@
 colorlog==6.10.1
-ruff==0.14.7
+ruff==0.14.8
 pip>=25,<26
 black==25.11.0
 pre-commit==4.5.0

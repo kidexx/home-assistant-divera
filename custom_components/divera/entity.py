@@ -28,53 +28,56 @@ class DiveraEntityDescription(EntityDescription):
     """
 
     attribute_fn: Callable[[DiveraClient], MutableMapping[str, Any]]
-
-
-class DiveraEntity(CoordinatorEntity[DiveraCoordinator]):
-    """Represents a Divera entity.
-
-    Attributes:
-        entity_description (DiveraEntityDescription):
-            Description of the entity.
-
-    """
-
-    _attr_has_entity_name = True
-    entity_description: DiveraEntityDescription
-
-    def __init__(
-        self, coordinator: DiveraCoordinator, description: DiveraEntityDescription
-    ) -> None:
-        """Initialize DiveraEntity.
-
-        Args:
-            coordinator (DiveraCoordinator): The coordinator managing this entity.
-            description (DiveraEntityDescription): Description of the entity.
-
-        """
+    
+class DiveraEntity(CoordinatorEntity):
+    def __init__(self, coordinator, description):
         super().__init__(coordinator)
         self.entity_description = description
-        
-        data = self.coordinator.data
-        ucr_id = None
 
-        # Fall 1: data ist ein Dict (z.B. aus _async_update_data)
+        data = self.coordinator.data
+
+        # UCR-ID bestimmen
+        ucr_id = None
+        cluster_name = None
+
         if isinstance(data, dict):
-            # je nach tatsächlicher Struktur im Coordinator
+            # Variante: Coordinator liefert bereits ein Dict
             ucr_id = data.get("ucr_id") or data.get("active_ucr")
 
-        # Fall 2: data ist ein DiveraClient-Objekt
+            # Cluster-Name, falls im Dict vorhanden
+            if ucr_id is not None:
+                # je nach Struktur, z.B. data["data"]["cluster"][ucr_id]["name"]
+                try:
+                    cluster = data.get("data", {}).get("cluster", {})
+                    cluster_entry = cluster.get(str(ucr_id)) or cluster.get(int(ucr_id))
+                    if cluster_entry:
+                        cluster_name = cluster_entry.get("name")
+                except Exception:
+                    cluster_name = None
+
         else:
-            # versuche bekannte Attributnamen
-            if hasattr(data, "active_ucr"):
-                ucr_id = getattr(data, "active_ucr")
-            elif hasattr(data, "ucr_id"):
-                ucr_id = getattr(data, "ucr_id")
+            # Variante: data ist ein DiveraClient
+            client = data
+
+            # UCR-ID aus Attributen holen
+            if hasattr(client, "active_ucr"):
+                ucr_id = getattr(client, "active_ucr")
+            elif hasattr(client, "ucr_id"):
+                ucr_id = getattr(client, "ucr_id")
+
+            # Cluster-Name aus Datenstruktur ableiten, ohne Methoden aufzurufen
+            try:
+                raw = getattr(client, "_DiveraClient__data", None) or getattr(client, "data", None)
+                if raw and ucr_id is not None:
+                    cluster = raw.get("data", {}).get("cluster", {})
+                    cluster_entry = cluster.get(str(ucr_id)) or cluster.get(int(ucr_id))
+                    if cluster_entry:
+                        cluster_name = cluster_entry.get("name")
+            except Exception:
+                cluster_name = None
 
         self._ucr_id = ucr_id
-        self._cluster_name = self.coordinator.data.get_cluster_name_from_ucr(
-            self._ucr_id
-        )
+        self._cluster_name = cluster_name or "DIVERA"
 
         self._attr_unique_id = "_".join(
             [

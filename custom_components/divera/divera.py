@@ -305,28 +305,24 @@ def get_state_name_by_id(self, status_id: int) -> str:
     def has_open_alarms(self) -> bool:
         """Return True if there is at least one open alarm."""
 
-        # interne Rohdaten holen
+        # Rohdaten holen – je nach Implementierung __data oder data verwenden
         data = getattr(self, "_DiveraClient__data", None) or getattr(self, "data", None)
         if not isinstance(data, dict):
             return False
 
-        alarms = (
-            data.get("data", {})
-                .get("alarms", [])
-        )
-
-        # Liste kann je nach API leer oder nicht vorhanden sein
+        # Liste der Alarme aus der bekannten Struktur ziehen
+        alarms = data.get("data", {}).get("alarms", [])
         if not alarms:
             return False
 
-        # je nach Schema: z.B. 'closed' Flag oder Status-ID auswerten
+        # Als „offen“ gelten Alarme, die nicht explizit als geschlossen markiert sind
         for alarm in alarms:
-            # Beispiele für typische Felder; ggf. an dein Schema anpassen:
-            if alarm.get("closed") is False:
+            # typisches Feld: "closed" oder "is_closed"
+            if alarm.get("closed") is False or alarm.get("is_closed") is False:
                 return True
 
+            # Fallback: bestimmte Status-IDs als „offen“ behandeln
             status_id = alarm.get("status_id")
-            # falls bestimmte Status-IDs „offen“ bedeuten:
             if status_id in (None, 0):
                 return True
 

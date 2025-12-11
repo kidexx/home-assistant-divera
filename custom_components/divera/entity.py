@@ -54,8 +54,24 @@ class DiveraEntity(CoordinatorEntity[DiveraCoordinator]):
         """
         super().__init__(coordinator)
         self.entity_description = description
+        
+        data = self.coordinator.data
+        ucr_id = None
 
-        self._ucr_id = self.coordinator.data.get_active_ucr()
+        # Fall 1: data ist ein Dict (z.B. aus _async_update_data)
+        if isinstance(data, dict):
+            # je nach tatsächlicher Struktur im Coordinator
+            ucr_id = data.get("ucr_id") or data.get("active_ucr")
+
+        # Fall 2: data ist ein DiveraClient-Objekt
+        else:
+            # versuche bekannte Attributnamen
+            if hasattr(data, "active_ucr"):
+                ucr_id = getattr(data, "active_ucr")
+            elif hasattr(data, "ucr_id"):
+                ucr_id = getattr(data, "ucr_id")
+
+        self._ucr_id = ucr_id
         self._cluster_name = self.coordinator.data.get_cluster_name_from_ucr(
             self._ucr_id
         )

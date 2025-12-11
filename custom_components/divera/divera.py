@@ -176,20 +176,38 @@ class DiveraClient:
         status_id = self.__data["data"]["status"]["status_id"]
         return self.get_state_name_by_id(status_id)
 
-    def get_state_name_by_id(self, status_id) -> str:
-        """Return the name of the state of the user by given id.
+def get_state_name_by_id(self, status_id: int) -> str:
+    """Return the human readable status name for a given status_id."""
 
-        Args:
-            status_id (int): The ID of the status.
+    # komplette Cluster-Struktur holen
+    data = self.__data.get("data", {})
+    cluster = data.get("cluster", {})
+    status_dict = cluster.get("status", {})
 
-        Returns:
-            str: The name of the state corresponding to the given ID.
+    # Schlüssel als String verwenden, wie bisher
+    key = str(status_id)
+    status_entry = status_dict.get(key)
 
-        Raises:
-            KeyError: If the required keys are not found in the data dictionary.
+    if not status_entry:
+        # unbekannter Status – Divera liefert z.B. 0, das nicht gemappt ist
+        _LOGGER.warning(
+            "DIVERA: Unknown status_id '%s' in cluster.status – using fallback name",
+            key,
+        )
+        # Fallback-Name zurückgeben, statt KeyError auszulösen
+        return f"Unbekannt ({key})"
 
-        """
-        return self.__data["data"]["cluster"]["status"][str(status_id)]["name"]
+    # Normalfall: Name aus der API-Struktur
+    name = status_entry.get("name")
+    if not name:
+        _LOGGER.debug(
+            "DIVERA: status_id '%s' has no 'name' field – using generic fallback",
+            key,
+        )
+        return f"Status {key}"
+
+    return name
+
 
     def get_user_state_attributes(self) -> dict:
         """Return additional information of the user's state.
@@ -356,24 +374,27 @@ class DiveraClient:
             "self_addressed": alarm.get("ucr_self_addressed"),
             "answered": self.get_answered_state(alarm),
         }
+        
+def get_answered_state(self, alarm) -> str:
+    """Map the answered state of an alarm to a status name."""
+    state_id = alarm.get("answered_state_id")
 
-    def get_answered_state(self, alarm):
-        """Return the state of the user who answered the alarm.
+    # falls Divera nichts liefert
+    if state_id is None:
+        return "Unbekannt"
 
-        Args:
-            alarm (dict): The alarm data.
+    try:
+        # sicherstellen, dass wir eine int-ID verwenden
+        state_id_int = int(state_id)
+    except (TypeError, ValueError):
+        _LOGGER.warning(
+            "DIVERA: answered_state_id '%s' is not an int – using fallback name",
+            state_id,
+        )
+        return f"Unbekannt ({state_id})"
 
-        Returns:
-            str: The state of the user who answered the alarm.
+    return self.get_state_name_by_id(state_id_int)
 
-        """
-        ucr_id = str(self.get_active_ucr())
-        answered = alarm.get("ucr_answered", {})
-
-        for state_id, answer in answered.items():
-            if ucr_id in answer:
-                return self.get_state_name_by_id(state_id)
-        return "not answered"
 
     def get_last_alarm(self) -> dict:
         """Return information of the last alarm.

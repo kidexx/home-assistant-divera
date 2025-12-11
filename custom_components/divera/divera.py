@@ -176,6 +176,8 @@ class DiveraClient:
         status_id = self.__data["data"]["status"]["status_id"]
         return self.get_state_name_by_id(status_id)
 
+
+
 def get_state_name_by_id(self, status_id: int) -> str:
     """Return the human readable status name for a given status_id."""
 
@@ -301,20 +303,34 @@ def get_state_name_by_id(self, status_id: int) -> str:
         return events
 
     def has_open_alarms(self) -> bool:
-        """Check if there are any open alarms.
+        """Return True if there is at least one open alarm."""
 
-        This method iterates through the list of alarm IDs specified in the
-        sorting order and checks if any of the corresponding alarms are not closed.
+        # interne Rohdaten holen
+        data = getattr(self, "_DiveraClient__data", None) or getattr(self, "data", None)
+        if not isinstance(data, dict):
+            return False
 
-        Returns:
-            bool: True if there is at least one open alarm; False otherwise.
-
-        """
-        sorting_list = self.__data["data"]["alarm"]["sorting"]
-        items = self.__data["data"]["alarm"]["items"]
-        return any(
-            not items.get(str(alarm_id), {}).get("closed") for alarm_id in sorting_list
+        alarms = (
+            data.get("data", {})
+                .get("alarms", [])
         )
+
+        # Liste kann je nach API leer oder nicht vorhanden sein
+        if not alarms:
+            return False
+
+        # je nach Schema: z.B. 'closed' Flag oder Status-ID auswerten
+        for alarm in alarms:
+            # Beispiele für typische Felder; ggf. an dein Schema anpassen:
+            if alarm.get("closed") is False:
+                return True
+
+            status_id = alarm.get("status_id")
+            # falls bestimmte Status-IDs „offen“ bedeuten:
+            if status_id in (None, 0):
+                return True
+
+        return False
 
     def get_last_alarm_attributes(self) -> dict:
         """Return additional information of the last alarm.

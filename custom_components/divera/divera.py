@@ -178,37 +178,37 @@ class DiveraClient:
 
 
 
-def get_state_name_by_id(self, status_id: int) -> str:
-    """Return the human readable status name for a given status_id."""
-
-    # komplette Cluster-Struktur holen
-    data = self.__data.get("data", {})
-    cluster = data.get("cluster", {})
-    status_dict = cluster.get("status", {})
-
-    # Schlüssel als String verwenden, wie bisher
-    key = str(status_id)
-    status_entry = status_dict.get(key)
-
-    if not status_entry:
-        # unbekannter Status – Divera liefert z.B. 0, das nicht gemappt ist
-        _LOGGER.warning(
-            "DIVERA: Unknown status_id '%s' in cluster.status – using fallback name",
-            key,
-        )
-        # Fallback-Name zurückgeben, statt KeyError auszulösen
-        return f"Unbekannt ({key})"
-
-    # Normalfall: Name aus der API-Struktur
-    name = status_entry.get("name")
-    if not name:
-        _LOGGER.debug(
-            "DIVERA: status_id '%s' has no 'name' field – using generic fallback",
-            key,
-        )
-        return f"Status {key}"
-
-    return name
+    def get_state_name_by_id(self, status_id: int) -> str:
+        """Return the human readable status name for a given status_id."""
+    
+        # komplette Cluster-Struktur holen
+        data = self.__data.get("data", {})
+        cluster = data.get("cluster", {})
+        status_dict = cluster.get("status", {})
+    
+        # Schlüssel als String verwenden, wie bisher
+        key = str(status_id)
+        status_entry = status_dict.get(key)
+    
+        if not status_entry:
+            # unbekannter Status – Divera liefert z.B. 0, das nicht gemappt ist
+            _LOGGER.warning(
+                "DIVERA: Unknown status_id '%s' in cluster.status – using fallback name",
+                key,
+            )
+            # Fallback-Name zurückgeben, statt KeyError auszulösen
+            return f"Unbekannt ({key})"
+    
+        # Normalfall: Name aus der API-Struktur
+        name = status_entry.get("name")
+        if not name:
+            _LOGGER.debug(
+                "DIVERA: status_id '%s' has no 'name' field – using generic fallback",
+                key,
+            )
+            return f"Status {key}"
+    
+        return name
 
 
     def get_user_state_attributes(self) -> dict:
@@ -387,25 +387,25 @@ def get_state_name_by_id(self, status_id: int) -> str:
             "answered": self.get_answered_state(alarm),
         }
         
-def get_answered_state(self, alarm) -> str:
-    """Map the answered state of an alarm to a status name."""
-    state_id = alarm.get("answered_state_id")
-
-    # falls Divera nichts liefert
-    if state_id is None:
-        return "Unbekannt"
-
-    try:
-        # sicherstellen, dass wir eine int-ID verwenden
-        state_id_int = int(state_id)
-    except (TypeError, ValueError):
-        _LOGGER.warning(
-            "DIVERA: answered_state_id '%s' is not an int – using fallback name",
-            state_id,
-        )
-        return f"Unbekannt ({state_id})"
-
-    return self.get_state_name_by_id(state_id_int)
+    def get_answered_state(self, alarm) -> str:
+        """Map the answered state of an alarm to a status name."""
+        state_id = alarm.get("answered_state_id")
+    
+        # falls Divera nichts liefert
+        if state_id is None:
+            return "Unbekannt"
+    
+        try:
+            # sicherstellen, dass wir eine int-ID verwenden
+            state_id_int = int(state_id)
+        except (TypeError, ValueError):
+            _LOGGER.warning(
+                "DIVERA: answered_state_id '%s' is not an int – using fallback name",
+                state_id,
+            )
+            return f"Unbekannt ({state_id})"
+    
+        return self.get_state_name_by_id(state_id_int)
 
 
     def get_last_alarm(self) -> dict:
